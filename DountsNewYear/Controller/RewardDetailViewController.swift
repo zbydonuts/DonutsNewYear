@@ -167,7 +167,7 @@ class RewardDetailViewController: UIViewController {
     }
     
     func setObserver(_ key: String) {
-        var ref: DatabaseReference!
+        let ref: DatabaseReference!
         ref = Database.database().reference()
         rewardRef = ref.child("Rewards").child(key)
         observerHandler = rewardRef?.observe(.value) { [weak self] (snapshot) in
@@ -189,15 +189,24 @@ class RewardDetailViewController: UIViewController {
         let alert: UIAlertController = UIAlertController(title: title, message: nil, preferredStyle:  .alert)
         let defaultAction: UIAlertAction = UIAlertAction(title: "OK", style: .default, handler:{
             (action: UIAlertAction!) -> Void in
-            if diff < 0, self.data.count == 0 {
-                let hud = MBProgressHUD.showAdded(to: self.view, animated: true)
-                hud.mode = .text
-                hud.detailsLabel.text = "在庫ないので、更新を失敗しました"
-                hud.hide(animated: true, afterDelay: 1.5)
-                return
-            }
-            self.data.count += diff
-            self.data.update()
+            
+            let ref: DatabaseReference!
+            ref = Database.database().reference()
+            ref.child("Rewards").child(self.data.key).observeSingleEvent(of: .value, with: { (snapShot) in
+                if let value = snapShot.value as? NSDictionary, let count = value["count"] as? Int {
+                    if diff < 0 {
+                        if count == 0 {
+                            let hud = MBProgressHUD.showAdded(to: self.view, animated: true)
+                            hud.mode = .text
+                            hud.detailsLabel.text = "在庫ないので、更新を失敗しました"
+                            hud.hide(animated: true, afterDelay: 1.5)
+                            return
+                        }
+                    }
+                    self.data.count = count + diff
+                    self.data.update()
+                }
+            })
         })
         let cancelAction: UIAlertAction = UIAlertAction(title: "Cancel", style: .cancel, handler:{
             (action: UIAlertAction!) -> Void in
